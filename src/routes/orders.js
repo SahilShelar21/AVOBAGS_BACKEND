@@ -1,28 +1,19 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  createOrder,
-  createRazorpayOrder,
-  verifyPayment,
-  getMyOrders,
-} = require("../controllers/order.controller");
-
+const { createOrder } = require("../controllers/order.controller");
 const auth = require("../middleware/auth");
+const db = require("../config/db");
 
-// Save order (COD / Online)
+// Create order (COD / Online)
 router.post("/create", createOrder);
 
-// Razorpay
-router.post("/payment/create", createRazorpayOrder);
-router.post("/verify", verifyPayment);
-
-// User orders
+// Get my orders
 router.get("/my-orders", auth, async (req, res) => {
   try {
-    const userId = req.user.id; // OR req.user.userId
+    const userId = req.user.id;
 
-    const result = await pool.query(
+    const result = await db.query(
       `SELECT id, total_amount, payment_status, payment_method, created_at
        FROM orders
        WHERE user_id = $1
@@ -30,7 +21,7 @@ router.get("/my-orders", auth, async (req, res) => {
       [userId]
     );
 
-    res.json(result.rows); // ✅ ALWAYS ARRAY
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to fetch orders" });

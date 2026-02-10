@@ -1,20 +1,17 @@
-// src/utils/whatsappMessage.js
-module.exports = function whatsappMessage(order) {
+module.exports = function whatsappMessage(order, items) {
   return `
-🛍️ *NEW AVOBAGS ORDER*
+*🛍️ NEW ORDER RECEIVED*
 
-🆔 *Order ID:* ${order.id}
+*Order ID:* ${order.id}
 
-👤 *Customer:* ${order.shipping_name}
-📞 *Phone:* ${order.shipping_phone}
-📍 *Address:* ${order.shipping_address}, ${order.shipping_city}
+*Customer:* ${order.name}
+*Phone:* ${order.phone}
+*Address:* ${order.address}, ${order.city}
 
-📦 *Items:*
-${order.items
-  .map((i) => `• ${i.product_name} × ${i.quantity}`)
-  .join("\n")}
+*Items:*
+${items.map(i => `- ${i.name} x${i.quantity}`).join("\n")}
 
-💰 *Total:* ₹${order.total_amount}
-💳 *Payment:* ${order.payment_method.toUpperCase()}
+*Total:* ₹${order.total_amount}
+*Payment:* ${order.payment_method.toUpperCase()}
 `;
 };

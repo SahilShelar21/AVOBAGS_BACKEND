@@ -1,19 +1,16 @@
-// src/utils/sendEmail.js
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: false, // true only for 465
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.ADMIN_EMAIL,
+    pass: process.env.ADMIN_EMAIL_APP_PASSWORD,
   },
 });
 
 module.exports = async function sendEmail({ to, subject, html }) {
-  return transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+  await transporter.sendMail({
+    from: `"AVOBAGS" <${process.env.ADMIN_EMAIL}>`,
     to,
     subject,
     html,

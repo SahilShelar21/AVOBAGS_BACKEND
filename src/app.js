@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 
+// CORS
 app.use(cors({
   origin: [
     "http://localhost:5173",
@@ -17,10 +18,9 @@ app.use(cors({
 }));
 
 // middleware
-app.use(cors());
 app.use(express.json());
 
-// ✅ Serve images
+// Serve images
 app.use("/images", express.static(path.join(__dirname, "../public/images")));
 
 // routes
