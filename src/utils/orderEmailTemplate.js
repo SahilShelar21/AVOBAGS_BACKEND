@@ -1,28 +1,38 @@
+// src/utils/orderEmailTemplate.js
 module.exports = function orderEmail(order) {
   return `
-    <h2>Thank you for your order!</h2>
-    <p>Order ID: <b>${order.orderId}</b></p>
+    <h2>🛍️ New Order Received – AVOBAGS</h2>
 
-    <h3>Shipping Details</h3>
+    <p><b>Order ID:</b> ${order.id}</p>
+
+    <h3>🚚 Shipping Details</h3>
     <p>
-      ${order.customer.name}<br/>
-      ${order.customer.address}<br/>
-      ${order.customer.city} - ${order.customer.pincode}<br/>
-      Phone: ${order.customer.phone}
+      ${order.shipping_name}<br/>
+      ${order.shipping_address}<br/>
+      ${order.shipping_city} - ${order.shipping_pincode}<br/>
+      Phone: ${order.shipping_phone}
     </p>
 
-    <h3>Order Summary</h3>
+    <h3>🧾 Order Summary</h3>
     <ul>
       ${order.items
         .map(
           (i) =>
-            `<li>${i.name} × ${i.quantity} — ₹${i.price * i.quantity}</li>`
+            `<li>${i.product_name} × ${i.quantity} — ₹${
+              i.price * i.quantity
+            }</li>`
         )
         .join("")}
     </ul>
 
-    <h3>Total: ₹${order.totalAmount}</h3>
+    <h3>Total Amount: ₹${order.total_amount}</h3>
 
-    <p>Payment Method: ${order.paymentMethod.toUpperCase()}</p>
+    <p>
+      <b>Payment Method:</b> ${order.payment_method.toUpperCase()}<br/>
+      <b>Payment Status:</b> ${order.payment_status}
+    </p>
+
+    <hr/>
+    <p>AVOBAGS – Premium Travel Bags</p>
   `;
 };

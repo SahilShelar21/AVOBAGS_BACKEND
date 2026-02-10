@@ -6,6 +6,15 @@ const sendEmail = require("../utils/sendEmail");
 const orderEmail = require("../utils/orderEmailTemplate");
 const whatsappMessage = require("../utils/whatsappMessage");
 
+await sendEmail({
+  to: process.env.ADMIN_EMAIL,
+  subject: "🛍️ New COD Order - AVOBAGS",
+  html: orderEmail(order),
+});
+
+// WhatsApp redirect (frontend usually)
+const whatsappText = encodeURIComponent(whatsappMessage(order));
+const whatsappUrl = `https://wa.me/${process.env.ADMIN_WHATSAPP}?text=${whatsappText}`;
 /* ==============================
    RAZORPAY INSTANCE (SAFE)
 ================================ */
