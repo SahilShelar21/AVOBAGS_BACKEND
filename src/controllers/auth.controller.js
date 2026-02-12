@@ -8,7 +8,20 @@ exports.signup = async (req, res) => {
     const { name, email, phone, password } = req.body;
 
     if (!name || !email || !phone || !password) {
-      return res.status(400).json({ message: "All fields required" });
+      return res.status(400).json({ success: false, error: "All fields required" });
+    }
+
+    // 🔥 Check if user already exists
+    const existingUser = await db.query(
+      "SELECT id FROM users WHERE email=$1 OR phone=$2",
+      [email, phone]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "User already exists",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -20,22 +33,31 @@ exports.signup = async (req, res) => {
       [name, email, phone, hashedPassword]
     );
 
-    res.json({ success: true, user: result.rows[0] });
+    res.status(201).json({
+      success: true,
+      user: result.rows[0],
+    });
+
   } catch (err) {
-    console.error("SIGNUP ERROR:", err);
-    res.status(500).json({ success: false });
+    console.error("SIGNUP ERROR:", err.message);
+    res.status(500).json({
+      success: false,
+      error: "Server error during signup",
+    });
   }
 };
+
 
 // LOGIN
 exports.login = async (req, res) => {
   try {
-    const { emailOrPhone, password } = req.body;
+    const { identifier, password } = req.body;
 
-    const userRes = await db.query(
-      `SELECT * FROM users WHERE email=$1 OR phone=$1`,
-      [emailOrPhone]
-    );
+const userRes = await db.query(
+  `SELECT * FROM users WHERE email=$1 OR phone=$1`,
+  [identifier]
+);
+
 
     if (userRes.rows.length === 0) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -48,11 +70,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email,
+    role: user.role || "user",
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: "7d" }
+);
+
 
     res.json({
       success: true,
