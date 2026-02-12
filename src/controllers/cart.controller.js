@@ -28,7 +28,29 @@ const getCart = async (req, res) => {
 const addToCart = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { productId, quantity, price } = req.body;
+    const { productId, quantity } = req.body;
+
+    if (!productId || !quantity) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    // ✅ Get real product price from DB
+    const productRes = await db.query(
+      "SELECT price FROM products WHERE id = $1",
+      [productId]
+    );
+
+    if (productRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const price = productRes.rows[0].price;
 
     const existing = await db.query(
       `SELECT id FROM cart_items 
@@ -52,8 +74,9 @@ const addToCart = async (req, res) => {
     }
 
     res.json({ success: true });
+
   } catch (err) {
-    console.error("ADD CART ERROR:", err.message);
+    console.error("ADD CART ERROR:", err);
     res.status(500).json({ success: false });
   }
 };

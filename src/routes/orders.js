@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();  
-const auth = require("../middleware/auth");   // 👈 IMPORTANT
+const auth = require("../middleware/authMiddleware");   // 👈 IMPORTANT
 const {createOrder, getMyOrders} = require("../controllers/order.controller");
 
 // Create order (COD / Online)

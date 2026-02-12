@@ -7,7 +7,7 @@ const {
   getProfile,
 } = require("../controllers/auth.controller");
 
-const authMiddleware = require("../middleware/auth");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Signup
 router.post("/signup", signup);
