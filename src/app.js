@@ -12,7 +12,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://avobags-frontend.onrender.com"
+    "https://avobags-frontend-v1.onrender.com"
   ],
   credentials: true
 }));
