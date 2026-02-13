@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../config/db");
-const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
@@ -11,15 +10,15 @@ const axios = require("axios");
    ENV VALIDATION
 ============================== */
 if (!process.env.RAZORPAY_KEY_SECRET) {
-  throw new Error("RAZORPAY_KEY_SECRET not configured");
+  console.error("❌ RAZORPAY_KEY_SECRET missing in environment variables");
 }
 
 /* ==============================
-   EMAIL TRANSPORTER (Reuse)
+   EMAIL TRANSPORTER
 ============================== */
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
+  port: Number(process.env.SMTP_PORT) || 587,
   secure: false,
   auth: {
     user: process.env.EMAIL_USER,
@@ -28,10 +27,11 @@ const transporter = nodemailer.createTransport({
 });
 
 /* ==============================
-   SEND EMAIL
+   SAFE EMAIL SENDER
 ============================== */
 const sendEmail = async ({ to, subject, html }) => {
   try {
+    if (!to) return;
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to,
@@ -39,30 +39,32 @@ const sendEmail = async ({ to, subject, html }) => {
       html,
     });
   } catch (err) {
-    console.error("Email error:", err.message);
+    console.error("📧 Email error:", err.message);
   }
 };
 
 /* ==============================
-   SEND WHATSAPP TO ADMIN
+   WHATSAPP ADMIN ALERT
 ============================== */
 const sendWhatsAppAdmin = async (message) => {
-  if (!process.env.WHATSAPP_API_URL) return;
-
   try {
+    if (!process.env.WHATSAPP_API_URL || !process.env.ADMIN_WHATSAPP) return;
+
     await axios.post(process.env.WHATSAPP_API_URL, {
       to: process.env.ADMIN_WHATSAPP,
       message,
     });
   } catch (err) {
-    console.error("WhatsApp error:", err.message);
+    console.error("📱 WhatsApp error:", err.message);
   }
 };
 
 /* ==============================
-   VERIFY PAYMENT ROUTE
+   VERIFY PAYMENT
 ============================== */
 router.post("/verify-payment", async (req, res) => {
+  const client = await db.connect();
+
   try {
     const {
       razorpay_order_id,
@@ -75,21 +77,24 @@ router.post("/verify-payment", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Missing payment details",
+        
       });
     }
 
     /* ==============================
-       SIGNATURE VERIFICATION
+       SIGNATURE VALIDATION
     ============================== */
     const generatedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(generatedSignature),
-      Buffer.from(razorpay_signature)
-    );
+    const isValid =
+      generatedSignature.length === razorpay_signature.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(generatedSignature),
+        Buffer.from(razorpay_signature)
+      );
 
     if (!isValid) {
       return res.status(400).json({
@@ -101,7 +106,7 @@ router.post("/verify-payment", async (req, res) => {
     /* ==============================
        IDEMPOTENCY CHECK
     ============================== */
-    const existing = await db.query(
+    const existing = await client.query(
       "SELECT id FROM orders WHERE razorpay_payment_id = $1",
       [razorpay_payment_id]
     );
@@ -116,9 +121,9 @@ router.post("/verify-payment", async (req, res) => {
     /* ==============================
        INSERT ORDER (TRANSACTION)
     ============================== */
-    await db.query("BEGIN");
+    await client.query("BEGIN");
 
-    const result = await db.query(
+    const result = await client.query(
       `INSERT INTO orders 
       (user_id, session_id, name, email, phone, address, city, state, pincode, total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, created_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'online','SUCCESS',$11,$12,NOW())
@@ -141,47 +146,52 @@ router.post("/verify-payment", async (req, res) => {
 
     const order = result.rows[0];
 
-    await db.query("COMMIT");
+    await client.query("COMMIT");
 
     /* ==============================
-       SEND NOTIFICATIONS (ASYNC SAFE)
+       SEND NOTIFICATIONS (ASYNC)
     ============================== */
     sendEmail({
       to: order.email,
       subject: `Order #${order.id} Confirmation`,
       html: `
-        <h3>Thank you for your order!</h3>
-        <p>Payment ID: ${order.razorpay_payment_id}</p>
-        <p>Total Amount: ₹${order.total_amount}</p>
+        <h2>Thank you for your order!</h2>
+        <p><strong>Order ID:</strong> ${order.id}</p>
+        <p><strong>Payment ID:</strong> ${order.razorpay_payment_id}</p>
+        <p><strong>Total:</strong> ₹${order.total_amount}</p>
         <p>We will deliver your order soon.</p>
       `,
     });
 
     sendEmail({
       to: process.env.ADMIN_EMAIL,
-      subject: `New Order #${order.id}`,
+      subject: `🛒 New Order #${order.id}`,
       html: `
-        <h3>New Order Received!</h3>
-        <p>Customer: ${order.name}</p>
-        <p>Email: ${order.email}</p>
-        <p>Payment ID: ${order.razorpay_payment_id}</p>
-        <p>Total Amount: ₹${order.total_amount}</p>
+        <h3>New Order Received</h3>
+        <p><strong>Name:</strong> ${order.name}</p>
+        <p><strong>Email:</strong> ${order.email}</p>
+        <p><strong>Amount:</strong> ₹${order.total_amount}</p>
+        <p><strong>Payment ID:</strong> ${order.razorpay_payment_id}</p>
       `,
     });
 
     sendWhatsAppAdmin(
-      `New Order #${order.id}\nCustomer: ${order.name}\nAmount: ₹${order.total_amount}`
+      `🛒 New Order #${order.id}
+          Customer: ${order.name}
+          Amount: ₹${order.total_amount}`
     );
 
     return res.json({ success: true, order });
 
   } catch (err) {
-    await db.query("ROLLBACK");
-    console.error("Verify payment error:", err);
+    await client.query("ROLLBACK");
+    console.error("❌ Verify payment error:", err);
     return res.status(500).json({
       success: false,
       message: "Order saving failed",
     });
+  } finally {
+    client.release();
   }
 });
 
