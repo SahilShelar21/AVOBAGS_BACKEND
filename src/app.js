@@ -5,11 +5,18 @@ const path = require("path");
 const cartRoutes = require("./routes/cart.routes");
 const orderRoutes = require("./routes/orders");
 const authRoutes = require("./routes/auth.routes");
+const razorpayWebhook = require("./routes/razorpayWebhook");
 
 const app = express();
 
-// CORS
+/* =========================
+   TRUST PROXY (Render Safe)
+========================= */
+app.set("trust proxy", 1);
 
+/* =========================
+   CORS
+========================= */
 app.use(
   cors({
     origin: [
@@ -20,19 +27,35 @@ app.use(
   })
 );
 
+/* =========================
+   WEBHOOK RAW BODY
+========================= */
+app.use(
+  "/api/webhooks/razorpay",
+  express.raw({ type: "application/json" })
+);
 
-// middleware
+/* =========================
+   JSON Middleware
+========================= */
 app.use(express.json());
 
-// Serve images
+/* =========================
+   Static Files
+========================= */
 app.use("/images", express.static(path.join(__dirname, "../public/images")));
 
-// routes
+/* =========================
+   Routes
+========================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/webhooks/razorpay", razorpayWebhook);
 
-// health check
+/* =========================
+   Health Check
+========================= */
 app.get("/", (req, res) => {
   res.send("API running");
 });
