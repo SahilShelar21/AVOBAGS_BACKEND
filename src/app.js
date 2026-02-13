@@ -9,13 +9,17 @@ const authRoutes = require("./routes/auth.routes");
 const app = express();
 
 // CORS
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://avobags-frontend-v1.onrender.com"
-  ],
-  credentials: true
-}));
+
+app.use(
+  cors({
+    origin: [
+      "https://avobags-frontend-v1.onrender.com",
+      "http://localhost:5173"
+    ],
+    credentials: true
+  })
+);
+
 
 // middleware
 app.use(express.json());

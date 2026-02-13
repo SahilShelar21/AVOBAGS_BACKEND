@@ -1,6 +1,8 @@
 require("dotenv").config();
 const app = require("./src/app");
 
+console.log("JWT_SECRET:", process.env.JWT_SECRET);
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, "0.0.0.0", () => {

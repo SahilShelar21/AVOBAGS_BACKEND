@@ -11,7 +11,6 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ success: false, error: "All fields required" });
     }
 
-    // 🔥 Check if user already exists
     const existingUser = await db.query(
       "SELECT id FROM users WHERE email=$1 OR phone=$2",
       [email, phone]
@@ -29,13 +28,31 @@ exports.signup = async (req, res) => {
     const result = await db.query(
       `INSERT INTO users (name, email, phone, password)
        VALUES ($1,$2,$3,$4)
-       RETURNING id, name, email`,
+       RETURNING id, name, email, role`,
       [name, email, phone, hashedPassword]
+    );
+
+    const user = result.rows[0];
+
+    // ✅ CREATE TOKEN AFTER SIGNUP
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role || "user",
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
       success: true,
-      user: result.rows[0],
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
     });
 
   } catch (err) {
@@ -46,8 +63,6 @@ exports.signup = async (req, res) => {
     });
   }
 };
-
-
 // LOGIN
 exports.login = async (req, res) => {
   try {
