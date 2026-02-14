@@ -84,24 +84,24 @@ router.post("/verify-payment", async (req, res) => {
     /* ==============================
        SIGNATURE VALIDATION
     ============================== */
-    const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
+const generatedSignature = crypto
+  .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+  .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+  .digest("hex");
 
-    const isValid =
-      generatedSignature.length === razorpay_signature.length &&
-      crypto.timingSafeEqual(
-        Buffer.from(generatedSignature),
-        Buffer.from(razorpay_signature)
-      );
+if (
+  generatedSignature.length !== razorpay_signature.length ||
+  !crypto.timingSafeEqual(
+    Buffer.from(generatedSignature),
+    Buffer.from(razorpay_signature)
+  )
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Payment verification failed",
+  });
+}
 
-    if (!isValid) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment verification failed",
-      });
-    }
 
     /* ==============================
        IDEMPOTENCY CHECK

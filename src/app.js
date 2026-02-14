@@ -27,26 +27,29 @@ app.use(
   })
 );
 
-/* =========================
-   WEBHOOK RAW BODY
-========================= */
+/* =====================================================
+   🔥 WEBHOOK RAW BODY (MUST COME BEFORE express.json())
+===================================================== */
 app.use(
   "/api/webhooks/razorpay",
   express.raw({ type: "application/json" })
 );
 
 /* =========================
-   JSON Middleware
+   JSON Middleware (FOR ALL OTHER ROUTES)
 ========================= */
 app.use(express.json());
 
 /* =========================
-   Static Files
+   STATIC FILES
 ========================= */
-app.use("/images", express.static(path.join(__dirname, "../public/images")));
+app.use(
+  "/images",
+  express.static(path.join(__dirname, "../public/images"))
+);
 
 /* =========================
-   Routes
+   ROUTES
 ========================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
@@ -54,10 +57,25 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/webhooks/razorpay", razorpayWebhook);
 
 /* =========================
-   Health Check
+   HEALTH CHECK
 ========================= */
 app.get("/", (req, res) => {
-  res.send("API running");
+  res.status(200).send("✅ API running");
+});
+
+/* =========================
+   404 HANDLER
+========================= */
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
+/* =========================
+   GLOBAL ERROR HANDLER
+========================= */
+app.use((err, req, res, next) => {
+  console.error("Global error:", err);
+  res.status(500).json({ success: false, message: "Internal server error" });
 });
 
 module.exports = app;

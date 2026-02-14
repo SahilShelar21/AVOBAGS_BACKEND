@@ -4,18 +4,25 @@ const app = require("./src/app");
 const PORT = process.env.PORT || 5000;
 
 /* =========================
-   SECURITY CHECK
+   ENV VALIDATION
 ========================= */
-if (!process.env.JWT_SECRET) {
-  console.error("❌ JWT_SECRET is missing in ENV");
-  process.exit(1);
-}
 
-if (!process.env.RAZORPAY_KEY_ID) {
-  console.error("❌ RAZORPAY_KEY_ID missing in ENV");
-  process.exit(1);
-}
+const requiredEnv = [
+  "JWT_SECRET",
+  "RAZORPAY_KEY_ID",
+  "RAZORPAY_KEY_SECRET",
+];
 
+requiredEnv.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    console.error(`❌ ${envVar} is missing in ENV`);
+    process.exit(1);
+  }
+});
+
+/* =========================
+   START SERVER
+========================= */
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

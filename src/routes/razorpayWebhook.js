@@ -18,37 +18,36 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Missing signature" });
     }
 
+    // IMPORTANT: use raw body
     const expectedSignature = crypto
       .createHmac("sha256", webhookSecret)
       .update(req.body)
       .digest("hex");
 
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(receivedSignature),
-      Buffer.from(expectedSignature)
-    );
-
-    if (!isValid) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+    if (
+      expectedSignature.length !== receivedSignature.length ||
+      !crypto.timingSafeEqual(
+        Buffer.from(expectedSignature),
+        Buffer.from(receivedSignature)
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid webhook signature",
+      });
     }
 
     const event = JSON.parse(req.body.toString());
 
+    console.log("Webhook event:", event.event);
+
     switch (event.event) {
+
       case "payment.captured": {
         const payment = event.payload.payment.entity;
 
-        const existing = await db.query(
-          "SELECT id FROM orders WHERE razorpay_payment_id=$1",
-          [payment.id]
-        );
-
-        if (existing.rows.length > 0) {
-          return res.status(200).json({ message: "Already processed" });
-        }
-
         await db.query(
-          `UPDATE orders 
+          `UPDATE orders
            SET payment_status='SUCCESS',
                razorpay_payment_id=$1,
                updated_at=NOW()
@@ -64,7 +63,7 @@ router.post("/", async (req, res) => {
         const payment = event.payload.payment.entity;
 
         await db.query(
-          `UPDATE orders 
+          `UPDATE orders
            SET payment_status='FAILED',
                updated_at=NOW()
            WHERE razorpay_order_id=$1`,
