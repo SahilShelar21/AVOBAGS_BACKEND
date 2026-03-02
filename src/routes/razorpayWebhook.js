@@ -1,0 +1,102 @@
+const express = require("express");
+const crypto = require("crypto");
+const db = require("../config/db");
+
+const router = express.Router();
+
+/*
+  IMPORTANT:
+  This route MUST use express.raw()
+  and should be mounted BEFORE express.json()
+*/
+
+router.post(
+  "/",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+      if (!webhookSecret) {
+        return res.status(500).json({
+          success: false,
+          message: "Webhook secret not configured",
+        });
+      }
+
+      const receivedSignature = req.headers["x-razorpay-signature"];
+
+      if (!receivedSignature) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing Razorpay signature",
+        });
+      }
+
+      /* ✅ Generate expected signature using RAW body */
+      const expectedSignature = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(req.body) // RAW BUFFER
+        .digest("hex");
+
+      if (expectedSignature !== receivedSignature) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid webhook signature",
+        });
+      }
+
+      /* ✅ Parse event safely */
+      const event = JSON.parse(req.body.toString());
+
+      console.log("Webhook event:", event.event);
+
+      switch (event.event) {
+        case "payment.captured": {
+          const payment = event.payload.payment.entity;
+
+          await db.query(
+            `UPDATE orders
+             SET payment_status='SUCCESS',
+                 razorpay_payment_id=$1,
+                 updated_at=NOW()
+             WHERE razorpay_order_id=$2`,
+            [payment.id, payment.order_id]
+          );
+
+          console.log("✅ Payment captured via webhook");
+          break;
+        }
+
+        case "payment.failed": {
+          const payment = event.payload.payment.entity;
+
+          await db.query(
+            `UPDATE orders
+             SET payment_status='FAILED',
+                 updated_at=NOW()
+             WHERE razorpay_order_id=$1`,
+            [payment.order_id]
+          );
+
+          console.log("❌ Payment failed via webhook");
+          break;
+        }
+
+        default:
+          console.log("Unhandled event:", event.event);
+      }
+
+      return res.status(200).json({ received: true });
+
+    } catch (err) {
+      console.error("Webhook error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Webhook processing failed",
+      });
+    }
+  }
+);
+
+module.exports = router;
