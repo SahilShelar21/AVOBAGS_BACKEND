@@ -82,7 +82,7 @@ const createOrder = async (req, res) => {
     (async () => {
       try {
         const msg = whatsappMessage(order, items);
-        const adminNumber = process.env.ADMIN_WHATSAPP || "918591103161";
+        const adminNumber = process.env.ADMIN_WHATSAPP || "919137844068";
 
         if (twilioClient && process.env.TWILIO_WHATSAPP_NUMBER) {
           try {
@@ -116,7 +116,7 @@ const createOrder = async (req, res) => {
     })();
 
     const encodedMsg = encodeURIComponent(whatsappMessage(order, items));
-    const waLink = `https://wa.me/${process.env.ADMIN_WHATSAPP || "918591103161"}?text=${encodedMsg}`;
+    const waLink = `https://wa.me/${process.env.ADMIN_WHATSAPP || "919137844068"}?text=${encodedMsg}`;
 
     return res.json({ success: true, orderId: order.id, waLink });
   } catch (err) {
@@ -148,7 +148,7 @@ const razorpayWebhook = async (req, res) => {
 
       // notify
       const msg = whatsappMessage(order, items);
-      const adminNumber = process.env.ADMIN_WHATSAPP || "918591103161";
+      const adminNumber = process.env.ADMIN_WHATSAPP || "919137844068";
       if (process.env.WHATSAPP_API_URL) {
         await axios.post(process.env.WHATSAPP_API_URL, { to: adminNumber, message: msg });
       } else {

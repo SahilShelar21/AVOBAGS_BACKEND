@@ -18,7 +18,7 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin: [
-      "https://avobags-frontend-v1.onrender.com",
+      "https://www.avobags.com",
       "http://localhost:5173"
     ],
     credentials: true

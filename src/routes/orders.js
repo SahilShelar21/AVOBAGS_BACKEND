@@ -128,7 +128,7 @@ router.post("/verify-payment", async (req, res) => {
     await client.query("COMMIT");
 
     // pre-calc link variables so they can be reused
-    const adminNumber = process.env.ADMIN_WHATSAPP || "918591103161";
+    const adminNumber = process.env.ADMIN_WHATSAPP || "919137844068";
     const msg = whatsappMessage(order, items);
 
     // Async notifications (don't block response)
