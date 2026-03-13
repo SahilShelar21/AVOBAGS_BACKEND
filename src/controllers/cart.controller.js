@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 /* ==============================
-   GET CART (NOW SESSION BASED)
+   GET CART (SESSION BASED)
 ============================== */
 const getCart = async (req, res) => {
   try {
@@ -13,15 +13,16 @@ const getCart = async (req, res) => {
 
     const result = await db.query(
       `SELECT 
-         ci.id,
-         ci.product_id,
-         ci.quantity,
-         ci.price,
-         p.name,
-         p.image_url
-       FROM cart_items ci
-       JOIN products p ON p.id = ci.product_id
-       WHERE ci.session_id = $1`,
+        ci.id,
+        ci.product_id,
+        ci.quantity,
+        ci.price,
+        p.name,
+        p.image_url
+      FROM cart_items ci
+      JOIN products p ON p.id = ci.product_id
+      WHERE ci.session_id = $1
+      ORDER BY ci.id DESC`,
       [sessionId]
     );
 
@@ -33,7 +34,7 @@ const getCart = async (req, res) => {
 };
 
 /* ==============================
-   ADD TO CART (SESSION BASED)
+   ADD TO CART
 ============================== */
 const addToCart = async (req, res) => {
   try {
@@ -60,29 +61,58 @@ const addToCart = async (req, res) => {
 
     const price = productRes.rows[0].price;
 
+    // Check if product already exists in cart
     const existing = await db.query(
-      `SELECT id FROM cart_items 
+      `SELECT id, quantity
+       FROM cart_items
        WHERE session_id = $1 AND product_id = $2`,
       [sessionId, productId]
     );
 
+    let cartItemId;
+
     if (existing.rows.length > 0) {
-      await db.query(
+      // Update existing item quantity
+      const updateResult = await db.query(
         `UPDATE cart_items
          SET quantity = quantity + $1
-         WHERE session_id = $2 AND product_id = $3`,
+         WHERE session_id = $2 AND product_id = $3
+         RETURNING id, quantity`,
         [quantity, sessionId, productId]
       );
+      cartItemId = updateResult.rows[0].id;
     } else {
-      await db.query(
+      // Insert new item
+      const insertResult = await db.query(
         `INSERT INTO cart_items (session_id, product_id, quantity, price)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
         [sessionId, productId, quantity, price]
       );
+      cartItemId = insertResult.rows[0].id;
     }
 
-    res.json({ success: true });
+    // Return the updated cart
+    const updatedCart = await db.query(
+      `SELECT 
+        ci.id,
+        ci.product_id,
+        ci.quantity,
+        ci.price,
+        p.name,
+        p.image_url
+      FROM cart_items ci
+      JOIN products p ON p.id = ci.product_id
+      WHERE ci.session_id = $1
+      ORDER BY ci.id DESC`,
+      [sessionId]
+    );
 
+    res.json({
+      success: true,
+      cartItemId,
+      cart: updatedCart.rows,
+    });
   } catch (err) {
     console.error("ADD CART ERROR:", err);
     res.status(500).json({ success: false });
@@ -90,38 +120,51 @@ const addToCart = async (req, res) => {
 };
 
 /* ==============================
-   REMOVE ITEM
+   REMOVE ITEM (PERMANENT DELETE)
 ============================== */
 const removeFromCart = async (req, res) => {
   const { id } = req.params;
 
   try {
-    await db.query(
-      "DELETE FROM cart_items WHERE id = $1",
+    const result = await db.query(
+      `DELETE FROM cart_items
+       WHERE id = $1
+       RETURNING *`,
       [id]
     );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to remove item" });
+    console.error("REMOVE CART ERROR:", err);
+    res.status(500).json({ success: false });
   }
 };
 
 /* ==============================
-   UPDATE QTY
+   UPDATE QUANTITY
 ============================== */
 const updateCartQty = async (req, res) => {
   const { id, quantity } = req.body;
 
   try {
+    if (quantity <= 0) {
+      await db.query(`DELETE FROM cart_items WHERE id = $1`, [id]);
+      return res.json({ success: true, removed: true });
+    }
+
     await db.query(
-      `UPDATE cart_items
-       SET quantity = $1
-       WHERE id = $2`,
+      `UPDATE cart_items SET quantity = $1 WHERE id = $2`,
       [quantity, id]
     );
 
-    res.json({ success: true });
+    res.json({ success: true, removed: false });
   } catch (err) {
     console.error("UPDATE CART FAILED:", err.message);
     res.status(500).json({ success: false });
