@@ -40,8 +40,8 @@ const createOrder = async (req, res) => {
 
     const insertOrder = await client.query(
       `INSERT INTO orders
-      (user_id, session_id, name, email, phone, address, city, state, pincode, total_amount, payment_status, payment_method, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+      (user_id, session_id, name, email, phone, address, city, district, state, pincode, total_amount, payment_status, payment_method, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
        RETURNING *`,
       [
         null,
@@ -51,6 +51,7 @@ const createOrder = async (req, res) => {
         customer?.phone || null,
         customer?.address || null,
         customer?.city || null,
+        customer?.district || null,
         customer?.state || null,
         customer?.pincode || null,
         totalAmount || 0,

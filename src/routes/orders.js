@@ -83,23 +83,24 @@ router.post("/verify-payment", async (req, res) => {
     await client.query("BEGIN");
 
     const orderInsert = await client.query(
-      `INSERT INTO orders 
-      (name, email, phone, address, city, state, pincode, total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'online','SUCCESS',$9,$10,NOW())
-      RETURNING *`,
-      [
-        orderData.name,
-        orderData.email,
-        orderData.phone,
-        orderData.address,
-        orderData.city,
-        orderData.state,
-        orderData.pincode,
-        orderData.total_amount,
-        razorpay_order_id,
-        razorpay_payment_id,
-      ]
-    );
+  `INSERT INTO orders 
+  (name, email, phone, address, city, district, state, pincode, total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, created_at)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'online','SUCCESS',$10,$11,NOW())
+  RETURNING *`,
+  [
+    orderData.name,
+    orderData.email,
+    orderData.phone,
+    orderData.address,
+    orderData.city,
+    orderData.district,   // ✅ added
+    orderData.state,
+    orderData.pincode,
+    orderData.total_amount,
+    razorpay_order_id,
+    razorpay_payment_id,
+  ]
+);
 
     const order = orderInsert.rows[0];
     const items = Array.isArray(orderData.items) ? orderData.items : [];
